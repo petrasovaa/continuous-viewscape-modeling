@@ -127,8 +127,8 @@ def main(elevation, dsm, coords, vid, observer_elevation, target_elevation,
         buffer = 'tmp_buffer'
         elev_combined = 'elev_combined'
         gs.run_command('r.circle', flags='b', output=buffer, coordinates=coords, max=dem_buffer)
-        gs.mapcalc('{e} = if(isnull({b}}), {dsm}, {dem}})'.format(e=elev_combined, b=buffer,
-                                                                  dsm=dsm, dem=elevation))
+        gs.mapcalc('{e} = if(isnull({b}), {dsm}, {dem})'.format(e=elev_combined, b=buffer,
+                                                                dsm=dsm, dem=elevation))
         elevation = elev_combined
     region = gs.region()
     params = {}
