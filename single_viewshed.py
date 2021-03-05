@@ -153,7 +153,7 @@ def main(elevation, coords, vid, observer_elevation, target_elevation,
             if vid:
                 f.write("view_id,")
             f.write("x,y,area")
-            for each in results_continuous:
+            for each in sample_continuous:
                 for st in ('minim', 'maxim', 'range', 'mean', 'stddev', 'sum'):
                     f.write("," + each + "_" + st)
             for i, each in enumerate(results_categorical):
@@ -161,7 +161,7 @@ def main(elevation, coords, vid, observer_elevation, target_elevation,
                 for line in gs.read_command('r.category', map=sample_categorical[i], separator='comma').strip().splitlines():
                     all_cats.append(int(line.split(',')[0]))
                 for c in all_cats:
-                    f.write("," + each + "_" + str(c))
+                    f.write("," + sample_categorical[i] + "_" + str(c))
             f.write(os.linesep)
 
         if vid:

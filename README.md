@@ -20,6 +20,13 @@ parallel < jobs.txt
 3. merge the individual output files with merge.py or with:
 
 ```
-find . -name "out_*.txt" | xargs cat >> all.txt
+find . -name "out_*.txt" | xargs cat >> all.csv
 ```
 4. Create continuous raster with postprocess.sh
+
+## other useful bash commands
+Sort by first numerical column
+
+```
+sort -k1 -n -t, all.csv > all_sorted.csv
+```
