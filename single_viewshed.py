@@ -87,15 +87,15 @@
 #% description: Print column headers
 #%end
 
-# %option
-# % key: memory
-# % type: integer
-# % required: no
-# % multiple: no
-# % key_desc: value
-# % description: Amount of memory to use in MB
-# % answer: 500
-# %end
+#%option
+#% key: memory
+#% type: integer
+#% required: no
+#% multiple: no
+#% key_desc: value
+#% description: Amount of memory to use in MB
+#% answer: 500
+#%end
 
 import os
 import grass.script as gs
