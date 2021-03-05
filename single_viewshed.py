@@ -86,6 +86,17 @@
 #% key: c
 #% description: Print column headers
 #%end
+
+# %option
+# % key: memory
+# % type: integer
+# % required: no
+# % multiple: no
+# % key_desc: value
+# % description: Amount of memory to use in MB
+# % answer: 500
+# %end
+
 import os
 import grass.script as gs
 
@@ -101,7 +112,7 @@ def compute_direction(main_direction, half_angle):
 
 
 def main(elevation, coords, vid, observer_elevation, target_elevation,
-         max_distance, direction, angle, output, sample_continuous, sample_categorical, header):
+         max_distance, direction, angle, output, sample_continuous, sample_categorical, header, memory):
     name = 'viewshed'
     gs.run_command('g.region', raster=elevation)
     gs.run_command('g.region', n=coords[1] + max_distance, s=coords[1] - max_distance,
@@ -119,7 +130,7 @@ def main(elevation, coords, vid, observer_elevation, target_elevation,
         params['direction_range'] = [mina, maxa]
     gs.run_command('r.viewshed', input=elevation, output=name,
                         coordinates=coords, flags='cb',
-                        memory=2048, quiet=True, **params)
+                        memory=memory, quiet=True, **params)
     
     
     # area
@@ -200,5 +211,6 @@ if __name__ == '__main__':
          output=options['output'],
          sample_continuous=sample_continuous,
          sample_categorical=sample_categorical,
-         header=flags['c'])
+         header=flags['c'],
+         memory=options['memory'])
 
