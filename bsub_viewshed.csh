@@ -9,7 +9,7 @@
 
 
 module use --append /usr/local/usrapps/gis/modulefiles/
-module load grass/79
+module load grass
 module load PrgEnv-intel
 
 mpirun /home/akratoc/launch/launch /home/akratoc/continuous-viewscape-modeling/house_jobs_hpc.txt
