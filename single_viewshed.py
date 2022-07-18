@@ -128,63 +128,124 @@ def compute_direction(main_direction, half_angle):
     return mina, maxa
 
 
-def main(elevation, dsm, coords, vid, observer_elevation, target_elevation,
-         max_distance, dem_buffer, direction, angle, output, sample_continuous, sample_categorical, header, memory):
-    name = 'viewshed'
-    gs.run_command('g.region', raster=elevation)
-    gs.run_command('g.region', n=coords[1] + max_distance, s=coords[1] - max_distance,
-                   e=coords[0] + max_distance, w=coords[0] - max_distance, align=elevation)
+def main(
+    elevation,
+    dsm,
+    coords,
+    vid,
+    observer_elevation,
+    target_elevation,
+    max_distance,
+    dem_buffer,
+    direction,
+    angle,
+    output,
+    sample_continuous,
+    sample_categorical,
+    header,
+    memory,
+):
+    name = "viewshed"
+    gs.run_command("g.region", raster=elevation)
+    gs.run_command(
+        "g.region",
+        n=coords[1] + max_distance,
+        s=coords[1] - max_distance,
+        e=coords[0] + max_distance,
+        w=coords[0] - max_distance,
+        align=elevation,
+    )
     # combine DEM and DSM:
     if dsm:
-        buffer = 'tmp_buffer'
-        elev_combined = 'elev_combined'
-        gs.run_command('r.circle', flags='b', output=buffer, coordinates=coords, max=dem_buffer)
-        gs.mapcalc('{e} = if(isnull({b}), {dsm}, {dem})'.format(e=elev_combined, b=buffer,
-                                                                dsm=dsm, dem=elevation))
+        buffer = "tmp_buffer"
+        elev_combined = "elev_combined"
+        gs.run_command(
+            "r.circle", flags="b", output=buffer, coordinates=coords, max=dem_buffer
+        )
+        gs.mapcalc(
+            "{e} = if(isnull({b}), {dsm}, {dem})".format(
+                e=elev_combined, b=buffer, dsm=dsm, dem=elevation
+            )
+        )
         elevation = elev_combined
     region = gs.region()
     params = {}
     if max_distance:
-        params['max_distance'] = max_distance
+        params["max_distance"] = max_distance
     if target_elevation:
-        params['target_elevation'] = target_elevation
+        params["target_elevation"] = target_elevation
     if observer_elevation:
-        params['observer_elevation'] = observer_elevation
+        params["observer_elevation"] = observer_elevation
     if direction:
         mina, maxa = compute_direction(float(direction), float(angle))
-        params['direction_range'] = [mina, maxa]
-    gs.run_command('r.viewshed', input=elevation, output=name,
-                        coordinates=coords, flags='cb',
-                        memory=memory, quiet=True, **params)
-    
-    
+        params["direction_range"] = [mina, maxa]
+    gs.run_command(
+        "r.viewshed",
+        input=elevation,
+        output=name,
+        coordinates=coords,
+        flags="cb",
+        memory=memory,
+        quiet=True,
+        **params
+    )
+
     # area
-    cells = gs.parse_command('r.univar', map=name, flags='g', quiet=True)['sum']
-    res = region['nsres']
+    cells = gs.parse_command("r.univar", map=name, flags="g", quiet=True)["sum"]
+    res = region["nsres"]
     area = float(cells) * res * res
     # sampling
     results_continuous = []
     results_categorical = []
 
     for each in sample_continuous:
-        results_continuous.append(gs.read_command('r.univar', map=each, zones=name, quiet=True, flags='t', separator='comma').strip().splitlines()[-1].split(','))
-        
-    gs.run_command('r.null', map=name, setnull=0)
-    for each in sample_categorical:
-        results_categorical.append(gs.read_command('r.univar', map=name, zones=each, quiet=True, flags='t', separator='comma').strip().splitlines()[1:])
+        results_continuous.append(
+            gs.read_command(
+                "r.univar",
+                map=each,
+                zones=name,
+                quiet=True,
+                flags="t",
+                separator="comma",
+            )
+            .strip()
+            .splitlines()[-1]
+            .split(",")
+        )
 
-    with open(output, 'w') as f:
+    gs.run_command("r.null", map=name, setnull=0)
+    for each in sample_categorical:
+        results_categorical.append(
+            gs.read_command(
+                "r.univar",
+                map=name,
+                zones=each,
+                quiet=True,
+                flags="t",
+                separator="comma",
+            )
+            .strip()
+            .splitlines()[1:]
+        )
+
+    with open(output, "w") as f:
         if header:
             if vid:
                 f.write("view_id,")
             f.write("x,y,area")
             for each in sample_continuous:
-                for st in ('minim', 'maxim', 'range', 'mean', 'stddev', 'sum'):
+                for st in ("minim", "maxim", "range", "mean", "stddev", "sum"):
                     f.write("," + each + "_" + st)
             for i, each in enumerate(results_categorical):
                 all_cats = []
-                for line in gs.read_command('r.category', map=sample_categorical[i], separator='comma').strip().splitlines():
-                    all_cats.append(int(line.split(',')[0]))
+                for line in (
+                    gs.read_command(
+                        "r.category", map=sample_categorical[i], separator="comma"
+                    )
+                    .strip()
+                    .splitlines()
+                ):
+                    all_cats.append(int(line.split(",")[0]))
                 for c in all_cats:
                     f.write("," + sample_categorical[i] + "_" + str(c))
             f.write(os.linesep)
@@ -193,18 +254,64 @@ def main(elevation, dsm, coords, vid, observer_elevation, target_elevation,
             f.write("%s," % vid)
         f.write("%.4f,%.4f,%.4f" % (coords[0], coords[1], area))
         for each in results_continuous:
-            zone, label, non_null_cells, null_cells, minim, maxim, range_, mean, mean_of_abs, stddev, variance, coeff_var,  sum_, sum_abs = each
-            if zone == '0':
+            (
+                zone,
+                label,
+                non_null_cells,
+                null_cells,
+                minim,
+                maxim,
+                range_,
+                mean,
+                mean_of_abs,
+                stddev,
+                variance,
+                coeff_var,
+                sum_,
+                sum_abs,
+            ) = each
+            if zone == "0":
                 minim, maxim, range_, mean, stddev, sum_ = 0, 0, 0, 0, 0, 0
-            f.write(",%.2f,%.2f,%.2f,%.2f,%.2f,%.2f" % (float(minim), float(maxim), float(range_), float(mean), float(stddev), float(sum_)))
+            f.write(
+                ",%.2f,%.2f,%.2f,%.2f,%.2f,%.2f"
+                % (
+                    float(minim),
+                    float(maxim),
+                    float(range_),
+                    float(mean),
+                    float(stddev),
+                    float(sum_),
+                )
+            )
 
         for i, each in enumerate(results_categorical):
             all_cats = []
-            for line in gs.read_command('r.category', map=sample_categorical[i], separator='comma').strip().splitlines():
-                all_cats.append(int(line.split(',')[0]))
+            for line in (
+                gs.read_command(
+                    "r.category", map=sample_categorical[i], separator="comma"
+                )
+                .strip()
+                .splitlines()
+            ):
+                all_cats.append(int(line.split(",")[0]))
             zones = {}
             for line in each:
-                zone, label, non_null_cells, null_cells, minim, maxim, range_, mean, mean_of_abs, stddev, variance, coeff_var,  sum_, sum_abs = line.split(',')
+                (
+                    zone,
+                    label,
+                    non_null_cells,
+                    null_cells,
+                    minim,
+                    maxim,
+                    range_,
+                    mean,
+                    mean_of_abs,
+                    stddev,
+                    variance,
+                    coeff_var,
+                    sum_,
+                    sum_abs,
+                ) = line.split(",")
                 zones[int(zone)] = int(non_null_cells)
             for zone in all_cats:
                 if zone in zones:
@@ -213,33 +320,34 @@ def main(elevation, dsm, coords, vid, observer_elevation, target_elevation,
                 else:
                     f.write(",0")
         f.write(os.linesep)
-    gs.run_command('g.remove', type='raster', name=[name], flags='f', quiet=True)
+    gs.run_command("g.remove", type="raster", name=[name], flags="f", quiet=True)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     options, flags = gs.parser()
-    coords = options['coordinates'].split(',')
+    coords = options["coordinates"].split(",")
     sample_continuous = []
-    if options['sample_continuous']:
-        sample_continuous = options['sample_continuous'].split(',')
+    if options["sample_continuous"]:
+        sample_continuous = options["sample_continuous"].split(",")
     sample_categorical = []
-    if options['sample_categorical']:
-        sample_categorical = options['sample_categorical'].split(',')
-    dsm = options['input_dsm'] if options['input_dsm'] else None
-    dem_buffer = float(options['dem_buffer']) if options['input_dsm'] else 0
-    main(elevation=options['input'],
-         dsm=dsm,
-         coords=(float(coords[0]), float(coords[1])),
-         vid=options['view_id'],
-         observer_elevation=options['observer_elevation'],
-         target_elevation=options['target_elevation'],
-         max_distance=float(options['max_distance']),
-         dem_buffer=dem_buffer,
-         direction=options['direction'],
-         angle=options['angle'],
-         output=options['output'],
-         sample_continuous=sample_continuous,
-         sample_categorical=sample_categorical,
-         header=flags['c'],
-         memory=options['memory'])
-
+    if options["sample_categorical"]:
+        sample_categorical = options["sample_categorical"].split(",")
+    dsm = options["input_dsm"] if options["input_dsm"] else None
+    dem_buffer = float(options["dem_buffer"]) if options["input_dsm"] else 0
+    main(
+        elevation=options["input"],
+        dsm=dsm,
+        coords=(float(coords[0]), float(coords[1])),
+        vid=options["view_id"],
+        observer_elevation=options["observer_elevation"],
+        target_elevation=options["target_elevation"],
+        max_distance=float(options["max_distance"]),
+        dem_buffer=dem_buffer,
+        direction=options["direction"],
+        angle=options["angle"],
+        output=options["output"],
+        sample_continuous=sample_continuous,
+        sample_categorical=sample_categorical,
+        header=flags["c"],
+        memory=options["memory"],
+    )
