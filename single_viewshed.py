@@ -9,6 +9,12 @@
 #% key: input
 #% description: Name of input elevation raster map
 #%end
+#%option G_OPT_R_INPUT
+#% required: no
+#% key: input_dsm
+#% label: Name of input digital surface raster map
+#% description: Used to create new surface as combination of DEM and DSM
+#%end
 #%option G_OPT_M_COORDS
 #% key: coordinates
 #%end
@@ -47,7 +53,14 @@
 #% description: Maximum visibility radius. By default infinity (-1)
 #% answer: -1
 #%end
-
+#%option
+#% key: dem_buffer
+#% type: double
+#% required: no
+#% multiple: no
+#% key_desc: value
+#% description: Buffer around view point in which DEM is used, elsewhere DSM
+#%end
 #%option
 #% key: direction
 #% type: double
@@ -97,6 +110,10 @@
 #% answer: 500
 #%end
 
+#%rules
+#% requires: input_dsm, dem_buffer
+#%end
+
 import os
 import grass.script as gs
 
@@ -111,12 +128,20 @@ def compute_direction(main_direction, half_angle):
     return mina, maxa
 
 
-def main(elevation, coords, vid, observer_elevation, target_elevation,
-         max_distance, direction, angle, output, sample_continuous, sample_categorical, header, memory):
+def main(elevation, dsm, coords, vid, observer_elevation, target_elevation,
+         max_distance, dem_buffer, direction, angle, output, sample_continuous, sample_categorical, header, memory):
     name = 'viewshed'
     gs.run_command('g.region', raster=elevation)
     gs.run_command('g.region', n=coords[1] + max_distance, s=coords[1] - max_distance,
                    e=coords[0] + max_distance, w=coords[0] - max_distance, align=elevation)
+    # combine DEM and DSM:
+    if dsm:
+        buffer = 'tmp_buffer'
+        elev_combined = 'elev_combined'
+        gs.run_command('r.circle', flags='b', output=buffer, coordinates=coords, max=dem_buffer)
+        gs.mapcalc('{e} = if(isnull({b}), {dsm}, {dem})'.format(e=elev_combined, b=buffer,
+                                                                dsm=dsm, dem=elevation))
+        elevation = elev_combined
     region = gs.region()
     params = {}
     if max_distance:
@@ -200,12 +225,16 @@ if __name__ == '__main__':
     sample_categorical = []
     if options['sample_categorical']:
         sample_categorical = options['sample_categorical'].split(',')
+    dsm = options['input_dsm'] if options['input_dsm'] else None
+    dem_buffer = float(options['dem_buffer']) if options['input_dsm'] else 0
     main(elevation=options['input'],
+         dsm=dsm,
          coords=(float(coords[0]), float(coords[1])),
          vid=options['view_id'],
          observer_elevation=options['observer_elevation'],
          target_elevation=options['target_elevation'],
          max_distance=float(options['max_distance']),
+         dem_buffer=dem_buffer,
          direction=options['direction'],
          angle=options['angle'],
          output=options['output'],
